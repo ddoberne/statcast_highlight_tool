@@ -28,9 +28,6 @@ def init_driver():
     driver = webdriver.Chrome(chromedriver)
     return driver
 
-def close_driver(driver):
-    pass
-
 def get_search_url(pitcher = '', batter = '', date = '', inning = '', balls = '', strikes = '', result = ''):
     """Takes statcast search parameters and gives the url for the search results."""
     url = 'https://baseballsavant.mlb.com/statcast_search?'
