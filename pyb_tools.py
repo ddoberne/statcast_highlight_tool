@@ -21,10 +21,40 @@ def get_search_args(s: pd.Series) -> dict:
 
     return output
 
+def get_search_args_list(df) -> list:
+    """Takes a statcast dataframe and returns the list of args needed to get the URL."""
+    output = []
+    for i in range(len(df)):
+        output.append(get_search_args(df.iloc[i]))
+    return output
+
+
+def generate_caption(n, pitcherid, batterid, date, flavor = ''):
+    """Generates a caption for a compilation."""
+    df = pybaseball.playerid_reverse_lookup([pitcherid])
+    pitcher = df.loc[0, 'name_first'].title() + ' ' + df.loc[0, 'name_last'].title()
+    df = pybaseball.playerid_reverse_lookup([batterid])
+    batter = df.loc[0, 'name_first'].title() + ' ' + df.loc[0, 'name_last'].title()
+    if len(flavor) > 0:
+        flavor = ', ' + flavor
+    output = f'{n}) {date} {pitcher} to {batter}{flavor}'
+    return output
+
+def generate_captions(argslist, flavorlist = None):
+    """Generates mutliple captions for a compilation."""
+    if flavorlist == None:
+        flavorlist = [''] * len(argslist)
+    output = []
+    for i, args in enumerate(argslist):
+        output.append(generate_caption(i + 1, args['pitcher'], args['batter'], args['date'], flavorlist[i]))
+    return output
+
+
+
 def kzone_miss(df):
     """Takes in a statcast dataframe and calculates the distance the pitch misses the strike zone."""
 
-    correction = 0.15
+    correction = 0.3
 
     def ft_high_or_low(x):
         sz_top, sz_bot, plate_z = x
@@ -70,11 +100,40 @@ def worst_called_strikes(df):
     return df
 
 def worst_called_balls(df):
-    """Takes in a statcast dataframe, filters for called strikes, and sorts by the most egregious called balls."""
+    """Takes in a statcast dataframe, filters for called balls, and sorts by the most egregious called balls."""
     df = df.dropna(subset = ['sz_top', 'sz_bot', 'plate_x' , 'plate_z'])
     df = df.loc[df['description'] == 'ball']
     df = off_center(df)
     df = df.sort_values(by = 'off_center', ascending = True)
     return df
+
+def called_corners(df):
+    """Takes in a statcast dataframe, filters for correctly called strikes far from the center of the strike zone."""
+    df = df.dropna(subset = ['sz_top', 'sz_bot', 'plate_x' , 'plate_z'])
+    df = df.loc[df['description'] == 'called_strike']
+    df = kzone_miss(df)
+    df = df.loc[df['miss_by'] == 0]
+    df = off_center(df)
+    df = df.sort_values(by = 'off_center', ascending = False)
+    return df
+
+def ump_show(df):
+    """Takes in a statcast dataframe, and filters for umps ringing up batters on pitches outside the strike zone."""
+    df = worst_called_strikes(df)
+    df = df.loc[df['strikes'] == 2]
+    return df
+
+def ump_show_flavor(x):
+    """Generates flavor text for ump show from the 'miss_by' column."""
+    return f'miss by {x * 12:.1f} inches'
+
+def clutch(df):
+    """Takes in a statcast dataframe, then finds the most impactful moments by WPA."""
+    df['delta_win_exp'] = df['delta_home_win_exp'].apply(abs)
+    return df.sort_values(by = 'delta_win_exp', ascending = False)
+
+def clutch_flavor(x):
+    """Generates flavor text for clutch from the 'delta_win_exp' column."""
+    return f'{x} change in WPA'
 
 

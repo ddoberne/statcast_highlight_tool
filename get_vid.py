@@ -3,6 +3,7 @@ from selenium import webdriver
 from bs4 import BeautifulSoup
 import time, os
 import requests
+from moviepy.editor import concatenate_videoclips, VideoFileClip, CompositeVideoClip, TextClip
 
 # Multi-result searches concatenated by '%7C'
 result_dict = {'called_strike': 'called%5C.%5C.strike',
@@ -37,6 +38,13 @@ def get_search_url(pitcher = '', batter = '', date = '', inning = '', balls = ''
     url += '&metric_1=&group_by=name&min_pitches=0&min_results=0&min_pas=0&sort_col=pitches&player_event_sort=api_p_release_speed&sort_order=desc#results'
     return url
 
+def get_search_urls(param_list):
+    """Takes in a list of argument dictionaries and gets the URLs for each of them, returning a list of URLs"""
+    output = []
+    for p in param_list:
+        output.append(get_search_url(**p))
+    return output
+
 def get_vid_from_url(url: str, driver, filename = 'highlight.mp4'):
     """Takes in a url as a string and uses Selenium to download the video, returning the filename. Retrieves first video in results"""
     pass
@@ -67,3 +75,34 @@ def get_vids_from_urls(urls: list, driver):
     for i, url in enumerate(urls):
         output.append(get_vid_from_url(url, driver, f'highlight{i}.mp4'))
     return output
+
+def create_compilation_from_urls(urls, output = 'compilation.mp4', captions = None, countdown = True):
+    """Takes in mutliple urls and makes a compilation video. Returns the filename of the compilation."""
+    driver = init_driver()
+    filenames = get_vids_from_urls(urls, driver)
+    driver.quit()
+    clips = []
+    for i, filename in enumerate(filenames):
+        time.sleep(0.2)
+        clip = VideoFileClip(filename, fps_source="fps")
+        print(f'{filename} framerate: {clip.fps}')
+        if captions != None:
+            text = TextClip(captions[i], font = 'Arial', fontsize = 36, color = 'white').set_position((60, clip.h - 140)).set_duration(clip.duration)
+            print(captions[i])
+            clip = CompositeVideoClip([clip, text])
+        clips.append(clip)
+        os.remove(filename)
+    if countdown:
+        print('flipping highlight order')
+        newclips = []
+        for clip in clips[::-1]:
+            newclips.append(clip)
+        clips = newclips
+    compilation = concatenate_videoclips(clips, method = 'compose')
+    compilation.write_videofile(output)
+    return output
+
+def create_compilation_from_args(args, output = 'compilation.mp4', captions = None, countdown = True):
+    """Takes in a list of arg dictionaries and creates a compilation video. Returns the filename of the compilation."""
+    urls = get_search_urls(args)
+    return create_compilation_from_urls(urls, output, captions, countdown)
