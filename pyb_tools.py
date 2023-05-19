@@ -49,9 +49,12 @@ def generate_captions(argslist, flavorlist = None):
         output.append(generate_caption(i + 1, args['pitcher'], args['batter'], args['date'], flavorlist[i]))
     return output
 
+def cols_in_group(x, group):
+    a = x[0]
+    b = x[1]
+    return (a in group) or (b in group)
 
-
-def kzone_miss(df):
+def kzone_miss(df, args):
     """Takes in a statcast dataframe and calculates the distance the pitch misses the strike zone."""
 
     correction = 0.3
@@ -91,23 +94,28 @@ def off_center(df):
     return df
 
 
-def worst_called_strikes(df):
+def worst_called_strikes(df, teams, players):
     """Takes in a statcast dataframe, filters for called strikes, and sorts by the most egregious called strikes."""
     df = df.dropna(subset = ['sz_top', 'sz_bot', 'plate_x' , 'plate_z'])
     df = df.loc[df['description'] == 'called_strike']
     df = kzone_miss(df)
+    if len(teams) > 0:
+        df = df.loc[df['home_team'].apply(lambda x: x in teams) == df['inning_topbot'].apply(lambda x: x == 'Bot')]
     df = df.sort_values(by = 'miss_by', ascending = False)
     return df
 
-def worst_called_balls(df):
+def worst_called_balls(df, teams, players):
     """Takes in a statcast dataframe, filters for called balls, and sorts by the most egregious called balls."""
     df = df.dropna(subset = ['sz_top', 'sz_bot', 'plate_x' , 'plate_z'])
     df = df.loc[df['description'] == 'ball']
     df = off_center(df)
-    df = df.sort_values(by = 'off_center', ascending = True)
+    if len(teams) > 0:
+        df = df.loc[df['home_team'].apply(lambda x: x in teams) == df['inning_topbot'].apply(lambda x: x == 'Bot')]
+    df['off_center'] = df['off_center'].apply(lambda x: -x)
+    df = df.sort_values(by = 'off_center', ascending = False)
     return df
 
-def called_corners(df):
+def called_corners(df, teams, players):
     """Takes in a statcast dataframe, filters for correctly called strikes far from the center of the strike zone."""
     df = df.dropna(subset = ['sz_top', 'sz_bot', 'plate_x' , 'plate_z'])
     df = df.loc[df['description'] == 'called_strike']
@@ -117,7 +125,7 @@ def called_corners(df):
     df = df.sort_values(by = 'off_center', ascending = False)
     return df
 
-def ump_show(df):
+def ump_show(df, teams, players):
     """Takes in a statcast dataframe, and filters for umps ringing up batters on pitches outside the strike zone."""
     df = worst_called_strikes(df)
     df = df.loc[df['strikes'] == 2]
@@ -127,13 +135,64 @@ def ump_show_flavor(x):
     """Generates flavor text for ump show from the 'miss_by' column."""
     return f'miss by {x * 12:.1f} inches'
 
-def clutch(df):
+def clutch(df, teams, players):
     """Takes in a statcast dataframe, then finds the most impactful moments by WPA."""
-    df['delta_win_exp'] = df['delta_home_win_exp'].apply(abs)
+    
+    def topbot(x):
+        if x == 'Top':
+            return 1
+        else:
+            return -1
+
+    def in_group(x):
+        if x in group:
+            return 1
+        else:
+            return -1
+
+    if len(teams) + len(players) == 0:
+        df['delta_win_exp'] = df['delta_home_win_exp'].apply(abs)
+    else:
+        if len(teams) > 0:
+            group = teams
+            df['in_group'] = df['home_team'].apply(in_group)
+            df['delta_win_exp'] = df['delta_home_win_exp'] * df['in_group']
+        else:
+            group = players
+            df['topbot'] = df['inning_topbot'].apply(topbot)
+            df['in_group'] = df['pitcher'].apply(in_group)
+            df['delta_win_exp'] = df['delta_home_win_exp'] * df['topbot'] * df['in_group']
     return df.sort_values(by = 'delta_win_exp', ascending = False)
+
+
+
+
+
+def team_clutch(x, group):
+    delta = x[0]
+    home_team = x[1]
+    if home_team in group:
+        return delta
+    else:
+        return -delta
+
+def player_clutch(x, group):
+    delta = x[0]
+    pitcher = x[1]
+    topbot = x[2]
+    if pitcher in group:
+        if topbot == 'Top':
+            return delta
+        else:
+            return -delta
+    else:
+        if topbot == 'Top':
+            return -delta
+        else:
+            return delta
+
 
 def clutch_flavor(x):
     """Generates flavor text for clutch from the 'delta_win_exp' column."""
     return f'{x} change in WPA'
-
 
