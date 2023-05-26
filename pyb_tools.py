@@ -18,6 +18,10 @@ def get_search_args(s: pd.Series) -> dict:
     output['balls'] = s['balls']
     output['strikes'] = s['strikes']
     output['result'] = s['description']
+    output['home_team'] = s['home_team']
+    output['batter'] = s['batter']
+    output['pitcher'] = s['pitcher']
+    output['topbot'] = s['inning_topbot']
 
     return output
 
@@ -54,7 +58,7 @@ def cols_in_group(x, group):
     b = x[1]
     return (a in group) or (b in group)
 
-def kzone_miss(df, args):
+def kzone_miss(df):
     """Takes in a statcast dataframe and calculates the distance the pitch misses the strike zone."""
 
     correction = 0.3
@@ -81,7 +85,16 @@ def kzone_miss(df, args):
 
     return df
 
+def batted_balls(df, teams):
+    """Filters a dataframe to only include balls hit in play."""
+    df = df.loc[df['description'] == 'hit_into_play']
+    if len(teams) > 0:
+        df = df.loc[df['home_team'].apply(lambda x: x in teams) == df['inning_topbot'].apply(lambda x: x == 'Bot')]
+    return df
+
+
 def off_center(df):
+    """Calculates the distance from the pitch's arrival point from the center of the strike zone"""
 
     def calc_off_center(x):
         plate_x, plate_z, sz_top, sz_bot = x
@@ -115,6 +128,21 @@ def worst_called_balls(df, teams, players):
     df = df.sort_values(by = 'off_center', ascending = False)
     return df
 
+def scorchers(df, teams, players):
+    df = batted_balls(df, teams)
+    df = df.loc[df['launch_angle'] > 0]
+    return df
+
+def undergrounders(df, teams, players):
+    df = batted_balls(df, teams)
+    df = df.loc[df['launch_angle'] < -10]
+    return df
+
+def takes_of_steel(df, teams, players):
+    df = worst_called_balls(df, teams, players)
+    df = df.loc[df['strikes'] == 2]
+    return df
+
 def called_corners(df, teams, players):
     """Takes in a statcast dataframe, filters for correctly called strikes far from the center of the strike zone."""
     df = df.dropna(subset = ['sz_top', 'sz_bot', 'plate_x' , 'plate_z'])
@@ -122,18 +150,20 @@ def called_corners(df, teams, players):
     df = kzone_miss(df)
     df = df.loc[df['miss_by'] == 0]
     df = off_center(df)
+    if len(teams) > 0:
+        df = df.loc[df['home_team'].apply(lambda x: x in teams) == df['inning_topbot'].apply(lambda x: x == 'Top')]
     df = df.sort_values(by = 'off_center', ascending = False)
     return df
 
 def ump_show(df, teams, players):
     """Takes in a statcast dataframe, and filters for umps ringing up batters on pitches outside the strike zone."""
-    df = worst_called_strikes(df)
+    df = worst_called_strikes(df, teams, players)
     df = df.loc[df['strikes'] == 2]
     return df
 
 def ump_show_flavor(x):
     """Generates flavor text for ump show from the 'miss_by' column."""
-    return f'miss by {x * 12:.1f} inches'
+    return f'miss by {x[0] * 12:.1f} inches'
 
 def clutch(df, teams, players):
     """Takes in a statcast dataframe, then finds the most impactful moments by WPA."""
@@ -165,34 +195,15 @@ def clutch(df, teams, players):
     return df.sort_values(by = 'delta_win_exp', ascending = False)
 
 
-
-
-
-def team_clutch(x, group):
-    delta = x[0]
-    home_team = x[1]
-    if home_team in group:
-        return delta
-    else:
-        return -delta
-
-def player_clutch(x, group):
-    delta = x[0]
-    pitcher = x[1]
-    topbot = x[2]
-    if pitcher in group:
-        if topbot == 'Top':
-            return delta
-        else:
-            return -delta
-    else:
-        if topbot == 'Top':
-            return -delta
-        else:
-            return delta
-
-
 def clutch_flavor(x):
     """Generates flavor text for clutch from the 'delta_win_exp' column."""
-    return f'{x} change in WPA'
+    return f'{x[0]} change in WPA'
 
+def batted_ball_flavor(x):
+    return f'{x[0]} MPH, {x[1]:.0f} degrees'
+
+def walks(df, teams, players):
+    df = kzone_miss(df)
+    df = df.loc[df['description'] == 'ball']
+    df = df.loc[df['balls'] == 3]
+    return df

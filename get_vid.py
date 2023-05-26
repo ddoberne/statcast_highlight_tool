@@ -1,5 +1,6 @@
 # Selenium tools to scrape BaseballSavant
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 import time, os
 import requests
@@ -29,7 +30,7 @@ def init_driver():
     driver = webdriver.Chrome(chromedriver)
     return driver
 
-def get_search_url(pitcher = '', batter = '', date = '', inning = '', balls = '', strikes = '', result = ''):
+def get_search_url(pitcher = '', batter = '', date = '', inning = '', balls = '', strikes = '', result = '', **kwargs):
     """Takes statcast search parameters and gives the url for the search results."""
     url = 'https://baseballsavant.mlb.com/statcast_search?'
     url += f'hfPTM=&hfPT=&hfAB=&hfGT=R%7C&hfPR={result_dict[result]}%7C&hfZ=&hfStadium=&hfBBL=&hf'
@@ -45,16 +46,23 @@ def get_search_urls(param_list):
         output.append(get_search_url(**p))
     return output
 
-def get_vid_from_url(url: str, driver, filename = 'highlight.mp4'):
+def get_vid_from_url(url: str, driver, filename = 'highlight.mp4', away = False):
     """Takes in a url as a string and uses Selenium to download the video, returning the filename. Retrieves first video in results"""
     pass
 
     driver.get(url)
     time.sleep(3)
     driver.find_element_by_class_name('player_name').click()
-    time.sleep(5)
+    time.sleep(7)
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     driver.get('https://baseballsavant.mlb.com' + soup.find('div', {'id':'search-results'}).find('a')['href'])
+    if away:
+        print('Switching to away feed...')
+        time.sleep(7)
+        try:
+            driver.find_element(By.ID, 'type_AWAY').click()
+        except:
+            print('Was unable to find away feed.')
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     source_url = soup.find('video', {'id':'sporty'}).find('source')['src']
 
@@ -69,17 +77,19 @@ def get_vid_from_url(url: str, driver, filename = 'highlight.mp4'):
 
     return filename
 
-def get_vids_from_urls(urls: list, driver):
+def get_vids_from_urls(urls: list, driver, aways = []):
     """Takes in multiple urls and uses Selenium to download the videos, returning the list of filenames."""
     output = []
     for i, url in enumerate(urls):
-        output.append(get_vid_from_url(url, driver, f'highlight{i}.mp4'))
+        output.append(get_vid_from_url(url, driver, f'highlight{i}.mp4', aways[i]))
     return output
 
-def create_compilation_from_urls(urls, output = 'compilation.mp4', captions = None, countdown = True):
+def create_compilation_from_urls(urls, output = 'compilation.mp4', captions = None, countdown = True, aways = []):
     """Takes in mutliple urls and makes a compilation video. Returns the filename of the compilation."""
     driver = init_driver()
-    filenames = get_vids_from_urls(urls, driver)
+    if len(aways) == 0:
+        aways = [False] * len(urls)
+    filenames = get_vids_from_urls(urls, driver, aways)
     driver.quit()
     clips = []
     for i, filename in enumerate(filenames):
@@ -102,7 +112,29 @@ def create_compilation_from_urls(urls, output = 'compilation.mp4', captions = No
     compilation.write_videofile(output)
     return output
 
-def create_compilation_from_args(args, output = 'compilation.mp4', captions = None, countdown = True):
+def create_compilation_from_args(args, output = 'compilation.mp4', captions = None, countdown = True, teams = [], players = []):
     """Takes in a list of arg dictionaries and creates a compilation video. Returns the filename of the compilation."""
     urls = get_search_urls(args)
-    return create_compilation_from_urls(urls, output, captions, countdown)
+    aways = []
+    if len(teams) + len(players) > 0:
+        for arg in args:
+            if len(teams) > 0:
+                if arg['home_team'] not in teams:
+                    aways.append(True)
+                else:
+                    aways.append(False)
+            else:
+                if (arg['pitcher'] in [players]):
+                    if arg['inning_topbot'] == 'Top':
+                        aways.append(True)
+                    else:
+                        aways.append(False)
+                else:
+                    if arg['inning_topbot'] == 'Top':
+                        aways.append(False)
+                    else:
+                        aways.append(True)
+
+
+
+    return create_compilation_from_urls(urls, output, captions, countdown, aways)
