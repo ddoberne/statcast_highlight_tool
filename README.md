@@ -34,12 +34,13 @@ Queries may be customized by manually calling functions in get_vid.py and pyb_to
 
 ## Requirements
 Statcast Highlight Tool requires the following to be successfully installed on your device:
-* (pybaseball)[https://github.com/jldbc/pybaseball]
-* (moviepy)[https://zulko.github.io/moviepy/]
-* (selenium)[https://selenium-python.readthedocs.io/]
-* (chromedriver)[https://zulko.github.io/moviepy/]
-* (Google Chrome)[https://www.google.com/chrome/]
+* [pybaseball](https://github.com/jldbc/pybaseball)
+* [moviepy](https://zulko.github.io/moviepy/)
+* [selenium](https://selenium-python.readthedocs.io/)
+* [chromedriver](https://zulko.github.io/moviepy/)
+* [Google Chrome](https://www.google.com/chrome/)
+
 Only pybaseball is required to make leaderboard dataframes, but creating video compilations require all of the above. Please do keep in mind that moviepy has its own requirements and that chromedriver needs to be updated regularly in order to function.
 
 ## Contact
-Message (@Sunyveil_Sports)[https://twitter.com/sunyveil_sports] on Twitter, or just make a comment here in case of Twitter's looming demise.
+Message [@Sunyveil_Sports](https://twitter.com/sunyveil_sports) on Twitter, or just make a comment here in case of Twitter's looming demise.
