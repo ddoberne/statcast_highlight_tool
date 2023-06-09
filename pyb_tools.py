@@ -79,6 +79,8 @@ def kzone_miss(df):
         a, b = x
         return round(((a * a) + (b * b)) ** 0.5, ndigits = 2)
 
+    df = df.dropna(subset = ['sz_top', 'sz_bot', 'plate_z', 'plate_x'])
+
     df['high_low'] = df[['sz_top', 'sz_bot', 'plate_z']].apply(ft_high_or_low, axis = 1)
     df['off_edge'] = df['plate_x'].apply(off_edge)
     df['miss_by'] = df[['high_low', 'off_edge']].apply(miss_by, axis = 1)
@@ -129,16 +131,19 @@ def worst_called_balls(df, teams, players):
     return df
 
 def scorchers(df, teams, players):
+    """Takes in a Statcast dataframe, sorts by hard contact with a positive launch angle."""
     df = batted_balls(df, teams)
     df = df.loc[df['launch_angle'] > 0]
     return df
 
 def undergrounders(df, teams, players):
+    """Takes in a Statcast dataframe, sorts by hard contact with a launch angle below -10."""
     df = batted_balls(df, teams)
     df = df.loc[df['launch_angle'] < -10]
     return df
 
 def takes_of_steel(df, teams, players):
+    """Takes in a Statcast dataframe, filters for 2-strike takes that result in a ball, sorted by proximity to the strie zone."""
     df = worst_called_balls(df, teams, players)
     df = df.loc[df['strikes'] == 2]
     return df
@@ -200,10 +205,18 @@ def clutch_flavor(x):
     return f'{x[0]} change in WPA'
 
 def batted_ball_flavor(x):
+    """Generates flavor text describing batted ball data."""
     return f'{x[0]} MPH, {x[1]:.0f} degrees'
 
 def walks(df, teams, players):
+    """Takes in a Statcast dataframe, filters it for balls that result in a walk, and sorts by the miss margin."""
     df = kzone_miss(df)
     df = df.loc[df['description'] == 'ball']
     df = df.loc[df['balls'] == 3]
+    return df
+
+def full_count_walks(df, teams, players):
+    """Takes in a Statcast dataframe, filters it for balls that result in a walk on 3-2 counts, and sorts by the miss margin."""
+    df = walks(df, teams, players)
+    df = df.loc[df['strikes'] == 2]
     return df

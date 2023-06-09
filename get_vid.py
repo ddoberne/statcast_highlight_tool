@@ -81,10 +81,13 @@ def get_vids_from_urls(urls: list, driver, aways = []):
     """Takes in multiple urls and uses Selenium to download the videos, returning the list of filenames."""
     output = []
     for i, url in enumerate(urls):
-        output.append(get_vid_from_url(url, driver, f'highlight{i}.mp4', aways[i]))
+        try:
+            output.append(get_vid_from_url(url, driver, f'highlight{i}.mp4', aways[i]))
+        except:
+            print('Error processing video for statcast search with url: ' + url)
     return output
 
-def create_compilation_from_urls(urls, output = 'compilation.mp4', captions = None, countdown = True, aways = []):
+def create_compilation_from_urls(urls, output = 'compilation.mp4', captions = None, countdown = True, aways = [], max_duration = 20, truncate_beginning = True):
     """Takes in mutliple urls and makes a compilation video. Returns the filename of the compilation."""
     driver = init_driver()
     if len(aways) == 0:
@@ -95,6 +98,10 @@ def create_compilation_from_urls(urls, output = 'compilation.mp4', captions = No
     for i, filename in enumerate(filenames):
         time.sleep(0.2)
         clip = VideoFileClip(filename, fps_source="fps")
+        if truncate_beginning:
+            clip = clip.subclip(2, clip.duration)
+        if clip.duration > max_duration:
+            clip = clip.subclip(0, max_duration)
         print(f'{filename} framerate: {clip.fps}')
         if captions != None:
             text = TextClip(captions[i], font = 'Arial', fontsize = 36, color = 'white').set_position((60, clip.h - 140)).set_duration(clip.duration)
@@ -112,7 +119,7 @@ def create_compilation_from_urls(urls, output = 'compilation.mp4', captions = No
     compilation.write_videofile(output)
     return output
 
-def create_compilation_from_args(args, output = 'compilation.mp4', captions = None, countdown = True, teams = [], players = []):
+def create_compilation_from_args(args, output = 'compilation.mp4', captions = None, countdown = True, teams = [], players = [], max_duration = 20, truncate_beginning = True):
     """Takes in a list of arg dictionaries and creates a compilation video. Returns the filename of the compilation."""
     urls = get_search_urls(args)
     aways = []
@@ -125,16 +132,17 @@ def create_compilation_from_args(args, output = 'compilation.mp4', captions = No
                     aways.append(False)
             else:
                 if (arg['pitcher'] in [players]):
-                    if arg['inning_topbot'] == 'Top':
-                        aways.append(True)
-                    else:
+                    if arg['topbot'] == 'Top':
                         aways.append(False)
+                    else:
+                        aways.append(True)
                 else:
-                    if arg['inning_topbot'] == 'Top':
-                        aways.append(False)
-                    else:
+                    if arg['topbot'] == 'Top':
                         aways.append(True)
+                    else:
+                        aways.append(False)
 
 
 
-    return create_compilation_from_urls(urls, output, captions, countdown, aways)
+    return create_compilation_from_urls(urls, output, captions, countdown, aways, max_duration = max_duration,
+                                        truncate_beginning = truncate_beginning)

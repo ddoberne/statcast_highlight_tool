@@ -2,7 +2,7 @@ import get_vid
 import pyb_tools
 
 def make_highlight_reel(start_date, end_date, n_highlights, format, daily = False, teams = [], players = [],
-                        ascending = False):
+                        ascending = False, max_duration = 20):
     """Creates a highlight reel from start_date to end_date of n_highlights clips based on the preset format.
      Set daily to true to pick n_highlights per day. Teams and players can be filtered for. Ascending = True will provide the lowest values instead of the highest."""
     df = make_leaderboard(start_date, end_date, n_highlights, format, daily, teams, players, ascending)
@@ -10,7 +10,7 @@ def make_highlight_reel(start_date, end_date, n_highlights, format, daily = Fals
     args = pyb_tools.get_search_args_list(df)
     captions = pyb_tools.generate_captions(args, list(df['flavor']))
     print(captions)
-    compilation = get_vid.create_compilation_from_args(args, captions = captions, teams = teams)
+    compilation = get_vid.create_compilation_from_args(args, captions = captions, teams = teams, players = players, max_duration = max_duration)
     return compilation
 
 def make_leaderboard(start_date, end_date, n_highlights, format, daily = False, teams = [], players = [],
@@ -49,35 +49,48 @@ def make_leaderboard(start_date, end_date, n_highlights, format, daily = False, 
 preset_dict = {}
 preset_dict['ump_show'] = {'tool': pyb_tools.ump_show,
                            'flavor_columns': ['miss_by'],
-                           'flavor_func': pyb_tools.ump_show_flavor,}
+                           'flavor_func': pyb_tools.ump_show_flavor,
+                           'description': 'Umps calling strike 3 on pitches outside the strike zone.'}
 
 preset_dict['called_corners'] = {'tool': pyb_tools.called_corners,
                                  'flavor_columns': ['off_center'],
-                                 'flavor_func': lambda x: '',}
+                                 'flavor_func': lambda x: '',
+                                 'description': 'Umps calling strikes on pitches that barely catch the strike zone.'}
 
 preset_dict['clutch'] = {'tool': pyb_tools.clutch,
                          'flavor_columns': ['delta_win_exp'],
-                         'flavor_func': pyb_tools.clutch_flavor,}
+                         'flavor_func': pyb_tools.clutch_flavor,
+                         'description': 'Plate appearances with the highest change in WPA.'}
 
 preset_dict['blind_umps'] = {'tool': pyb_tools.worst_called_balls,
                              'flavor_columns': ['off_center'],
-                             'flavor_func': lambda x: ''}
+                             'flavor_func': lambda x: '',
+                             'description': 'Umps calling pitches close to the center of the strike zone balls'}
 
 preset_dict['takes_of_steel'] = {'tool': pyb_tools.takes_of_steel,
                                  'flavor_columns': ['off_center'],
-                                 'flavor_func': lambda x: ''}
+                                 'flavor_func': lambda x: '',
+                                 'description': 'Batters taking close pitches with 2 strikes.'}
 
 preset_dict['scorchers'] = {'tool': pyb_tools.scorchers,
                             'flavor_columns': ['launch_speed', 'launch_angle'],
-                            'flavor_func': pyb_tools.batted_ball_flavor}
+                            'flavor_func': pyb_tools.batted_ball_flavor,
+                            'description': 'High exit velo contact with positive launch angle.'}
 
 preset_dict['undergrounders'] = {'tool': pyb_tools.undergrounders,
                             'flavor_columns': ['launch_speed', 'launch_angle'],
-                            'flavor_func': pyb_tools.batted_ball_flavor}
+                            'flavor_func': pyb_tools.batted_ball_flavor,
+                            'description': 'High exit velo contact with launch angles below -10.'}
 
 preset_dict['walks'] = {'tool': pyb_tools.walks,
                         'flavor_columns': ['miss_by'],
-                        'flavor_func': pyb_tools.ump_show_flavor}
+                        'flavor_func': pyb_tools.ump_show_flavor,
+                        'description': 'Walks sorted by how much the pitch misses by.'}
+
+preset_dict['full_count_walks'] = {'tool': pyb_tools.full_count_walks,
+                        'flavor_columns': ['miss_by'],
+                        'flavor_func': pyb_tools.ump_show_flavor,
+                        'description': 'Walks on full counts sorted by how much the pitch misses by.'}
 
 
 teamcodes = {"Red Sox": "BOS",
