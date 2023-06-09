@@ -19,6 +19,8 @@ presets.make_highlight_reel(start_date = '2023-05-01', end_date = '2023-05-31',
                             daily = False, ascending = False, max_duration = 20)
 ```
 
+The return value for this function will be the name of the video file created, which defaults to ```compilation.mp4```.
+
 Parameters are described here:
 * ```start_date``` and ```end_date```: The start and end dates of the search.
 * ```n_highlights```: The top n clips to get.
