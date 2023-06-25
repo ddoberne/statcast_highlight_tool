@@ -2,7 +2,7 @@ import get_vid
 import pyb_tools
 
 def make_highlight_reel(start_date, end_date, n_highlights, format, daily = False, teams = [], players = [],
-                        ascending = False, max_duration = 20):
+                        ascending = False, max_duration = 20, countdown = True, truncate_beginning = True):
     """Creates a highlight reel from start_date to end_date of n_highlights clips based on the preset format.
      Set daily to true to pick n_highlights per day. Teams and players can be filtered for. Ascending = True will provide the lowest values instead of the highest."""
     df = make_leaderboard(start_date, end_date, n_highlights, format, daily, teams, players, ascending)
@@ -10,7 +10,7 @@ def make_highlight_reel(start_date, end_date, n_highlights, format, daily = Fals
     args = pyb_tools.get_search_args_list(df)
     captions = pyb_tools.generate_captions(args, list(df['flavor']))
     print(captions)
-    compilation = get_vid.create_compilation_from_args(args, captions = captions, teams = teams, players = players, max_duration = max_duration)
+    compilation = get_vid.create_compilation_from_args(args, captions = captions, teams = teams, players = players, max_duration = max_duration, countdown = countdown, truncate_beginning = truncate_beginning)
     return compilation
 
 def make_leaderboard(start_date, end_date, n_highlights, format, daily = False, teams = [], players = [],
@@ -19,6 +19,7 @@ def make_leaderboard(start_date, end_date, n_highlights, format, daily = False, 
      Set daily to true to pick n_highlights per day. Teams and players can be filtered for. Ascending = True will provide the lowest values instead of the highest."""
     pyb_tools.pybaseball.cache.enable()
     df = pyb_tools.get_statcast_data(start_date, end_date)
+    df = pyb_tools.determine_pitching_batting_team(df)
     # Next line calls a function from a dict
     df = preset_dict[format]['tool'](df, teams, players)
     df = df.sort_values(by = preset_dict[format]['flavor_columns'], ascending = ascending)
@@ -92,6 +93,20 @@ preset_dict['full_count_walks'] = {'tool': pyb_tools.full_count_walks,
                         'flavor_func': pyb_tools.ump_show_flavor,
                         'description': 'Walks on full counts sorted by how much the pitch misses by.'}
 
+preset_dict['big_fly'] = {'tool': pyb_tools.hit_distance,
+                          'flavor_columns': ['hit_distance_sc', 'launch_speed', 'launch_angle'],
+                          'flavor_func': pyb_tools.home_run_flavor,
+                          'description': 'Longest struck home runs.'}
+
+preset_dict['bad_swings'] = {'tool': pyb_tools.bad_swings,
+                             'flavor_columns': ['off_edge'],
+                             'flavor_func': pyb_tools.ump_show_flavor,
+                             'description': 'Swings and misses on pitches outside the strike zone.'}
+
+preset_dict['worst_called_strikes'] = { 'tool': pyb_tools.worst_called_strikes,
+                                        'flavor_columns': ['miss_by'],
+                                        'flavor_func': pyb_tools.ump_show_flavor,
+                                        'description': 'Umps calling strikes on pitches outside the strike zone.'}
 
 teamcodes = {"Red Sox": "BOS",
              "Yankees": "NYY",

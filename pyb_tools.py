@@ -53,6 +53,25 @@ def generate_captions(argslist, flavorlist = None):
         output.append(generate_caption(i + 1, args['pitcher'], args['batter'], args['date'], flavorlist[i]))
     return output
 
+def determine_pitching_batting_team(df):
+    """Creates columns pitching_team and batting_team."""
+    def create_pitching_team(x):
+        if x[2] == 'Top':
+            return x[0]
+        else:
+            return x[1]
+        
+    def create_batting_team(x):
+        if x[2] == 'Top':
+            return x[1]
+        else:
+            return x[0]
+
+    df['pitching_team'] = df[['home_team', 'away_team', 'inning_topbot']].apply(create_pitching_team, axis = 1)
+    df['batting_team'] = df[['home_team', 'away_team', 'inning_topbot']].apply(create_batting_team, axis = 1)
+
+    return df
+
 def cols_in_group(x, group):
     a = x[0]
     b = x[1]
@@ -124,8 +143,10 @@ def worst_called_balls(df, teams, players):
     df = df.dropna(subset = ['sz_top', 'sz_bot', 'plate_x' , 'plate_z'])
     df = df.loc[df['description'] == 'ball']
     df = off_center(df)
+    df = kzone_miss(df)
+    df = df.loc[df['miss_by'] == 0]
     if len(teams) > 0:
-        df = df.loc[df['home_team'].apply(lambda x: x in teams) == df['inning_topbot'].apply(lambda x: x == 'Bot')]
+        df = df.loc[df['home_team'].apply(lambda x: x in teams) == df['inning_topbot'].apply(lambda x: x == 'Top')]
     df['off_center'] = df['off_center'].apply(lambda x: -x)
     df = df.sort_values(by = 'off_center', ascending = False)
     return df
@@ -168,7 +189,7 @@ def ump_show(df, teams, players):
 
 def ump_show_flavor(x):
     """Generates flavor text for ump show from the 'miss_by' column."""
-    return f'miss by {x[0] * 12:.1f} inches'
+    return f'{x[0] * 12:.1f} inches outside zone'
 
 def clutch(df, teams, players):
     """Takes in a statcast dataframe, then finds the most impactful moments by WPA."""
@@ -220,3 +241,26 @@ def full_count_walks(df, teams, players):
     df = walks(df, teams, players)
     df = df.loc[df['strikes'] == 2]
     return df
+
+def hit_distance(df, teams, players):
+    """Takes in a Statcast dataframe, and sorts it by the distance the ball traveled."""
+    df = df.loc[df['description'] == 'hit_into_play']
+    if len(teams) + len(players) > 0:
+        if len(teams) > 0:
+            df = df.loc[df['batting_team'].apply(lambda x: x in teams)]
+        else:
+            df = df.loc[df['batter'].apply(lambda x: x in players)]
+    return df
+
+def home_run_flavor(x):
+    """Generates flavor text for home runs."""
+    return f'{x[0]}ft, {x[1]} MPH, {x[2]:.0f}° LA'
+
+def bad_swings(df, teams, players):
+    df = kzone_miss(df)
+    if len(teams) > 0:
+        df = df.loc[df['batting_team'].apply(lambda x: x in teams)]
+    df = df.loc[df['description'].apply(lambda x: x in ('swinging_strike', 'swinging_strike_blocked'))]
+    df = df.loc[df['events'].apply(lambda x: x in ('strikeout', 'strikkeout_double_play'))]
+    return df
+
