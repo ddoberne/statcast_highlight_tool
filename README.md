@@ -1,5 +1,5 @@
 # Statcast Highlight Tool
-Tools for compiling .mp4 highlight reels from BaseballSavant. Statcast Highlight Tool can generate leaderboards given statcast data, scrape BaseballSavant for the corresponding video clips, and finally stitch together a highlight reel with annotations, exported in .mp4 format. Specific teams and players may be filtered for, and if so, the broadcast for that player/team will be prioritized when scraping the video clip.
+Tools for compiling .mp4 highlight reels from BaseballSavant ([example compilation here](https://twitter.com/Sunyveil_Sports/status/1667311883085565954?s=20)). Statcast Highlight Tool can generate leaderboards given statcast data, scrape BaseballSavant for the corresponding video clips, and finally stitch together a highlight reel with annotations, exported in .mp4 format. Specific teams and players may be filtered for, and if so, the broadcast for that player/team will be prioritized when scraping the video clip.
 
 Some of the existing presets in Statcast Highlight Tool include:
 * Plays with the biggest change in WPA
