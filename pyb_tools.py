@@ -80,7 +80,8 @@ def cols_in_group(x, group):
 def kzone_miss(df):
     """Takes in a statcast dataframe and calculates the distance the pitch misses the strike zone."""
 
-    correction = 0.3
+    correction = 0
+    # This was 0.3, but lots of balls that appeared low were being picked up as strikes
 
     def ft_high_or_low(x):
         sz_top, sz_bot, plate_z = x
@@ -261,6 +262,14 @@ def bad_swings(df, teams, players):
     if len(teams) > 0:
         df = df.loc[df['batting_team'].apply(lambda x: x in teams)]
     df = df.loc[df['description'].apply(lambda x: x in ('swinging_strike', 'swinging_strike_blocked'))]
-    df = df.loc[df['events'].apply(lambda x: x in ('strikeout', 'strikkeout_double_play'))]
+    df = df.loc[df['events'].apply(lambda x: x in ('strikeout', 'strikeout_double_play'))]
+    return df
+
+def chasing_hits(df, teams, players):
+    df = kzone_miss(df)
+    if len(teams) > 0:
+        df = df.loc[df['batting_team'].apply(lambda x: x in teams)]
+    df = df.loc[df['description'].apply(lambda x: x == 'hit_into_play')]
+    df = df.loc[df['events'].apply(lambda x: x in ['single', 'double', 'triple', 'home_run'])]
     return df
 

@@ -9,7 +9,8 @@ def make_highlight_reel(start_date, end_date, n_highlights, format, daily = Fals
     df['flavor'] = df[preset_dict[format]['flavor_columns']].apply(preset_dict[format]['flavor_func'], axis = 1)
     args = pyb_tools.get_search_args_list(df)
     captions = pyb_tools.generate_captions(args, list(df['flavor']))
-    print(captions)
+    for caption in captions:
+        print(caption)
     compilation = get_vid.create_compilation_from_args(args, captions = captions, teams = teams, players = players, max_duration = max_duration, countdown = countdown, truncate_beginning = truncate_beginning)
     return compilation
 
@@ -107,6 +108,12 @@ preset_dict['worst_called_strikes'] = { 'tool': pyb_tools.worst_called_strikes,
                                         'flavor_columns': ['miss_by'],
                                         'flavor_func': pyb_tools.ump_show_flavor,
                                         'description': 'Umps calling strikes on pitches outside the strike zone.'}
+
+
+preset_dict['chasing_hits'] = { 'tool': pyb_tools.chasing_hits,
+                                        'flavor_columns': ['miss_by'],
+                                        'flavor_func': pyb_tools.ump_show_flavor,
+                                        'description': 'Batters getting hits on pitches outside the strike zone.'}
 
 teamcodes = {"Red Sox": "BOS",
              "Yankees": "NYY",
